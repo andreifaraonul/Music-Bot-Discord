@@ -11,15 +11,16 @@ export default {
 
   async execute(message, args, client) {
     const page = Number.parseInt(args[0]) || 1
-    await this.showQueue(message, client, page)
+    await this.showQueue(message, client, page, false)
   },
 
   async executeSlash(interaction, client) {
     const page = interaction.options.getInteger("page") || 1
-    await this.showQueue(interaction, client, page)
+    await interaction.deferReply()
+    await this.showQueue(interaction, client, page, true)
   },
 
-  async showQueue(ctx, client, page) {
+  async showQueue(ctx, client, page, isSlash = false) {
     const player = client.music.players.get(ctx.guild.id)
 
     if (!player || (!player.queue.current && player.queue.size === 0)) {
@@ -29,7 +30,7 @@ export default {
         description: "The queue is currently empty. Add some songs with the play command!",
         timestamp: new Date().toISOString(),
       }
-      return ctx.reply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     }
 
     const queue = player.queue
@@ -45,7 +46,7 @@ export default {
         description: `Page ${page} doesn't exist. There are only ${totalPages} pages.`,
         timestamp: new Date().toISOString(),
       }
-      return ctx.reply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     }
 
     let description = ""
@@ -88,7 +89,15 @@ export default {
       timestamp: new Date().toISOString(),
     }
 
-    ctx.reply({ embeds: [embed] })
+    this.sendResponse(ctx, { embeds: [embed] }, isSlash)
+  },
+
+  sendResponse(ctx, content, isSlash) {
+    if (isSlash) {
+      return ctx.editReply(content)
+    } else {
+      return ctx.reply(content)
+    }
   },
 
   formatTime(ms) {

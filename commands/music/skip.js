@@ -7,14 +7,15 @@ export default {
   slashCommand: new SlashCommandBuilder().setName("skip").setDescription("Skip the current song"),
 
   async execute(message, args, client) {
-    await this.skipSong(message, client)
+    await this.skipSong(message, client, false)
   },
 
   async executeSlash(interaction, client) {
-    await this.skipSong(interaction, client)
+    await interaction.deferReply()
+    await this.skipSong(interaction, client, true)
   },
 
-  async skipSong(ctx, client) {
+  async skipSong(ctx, client, isSlash = false) {
     const player = client.music.players.get(ctx.guild.id)
 
     if (!player || !player.queue.current) {
@@ -24,7 +25,7 @@ export default {
         description: "There is no song currently playing!",
         timestamp: new Date().toISOString(),
       }
-      return ctx.reply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     }
 
     const voiceChannel = ctx.member.voice.channel
@@ -35,7 +36,7 @@ export default {
         description: "You need to be in the same voice channel as the bot!",
         timestamp: new Date().toISOString(),
       }
-      return ctx.reply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     }
 
     const currentTrack = player.queue.current
@@ -49,6 +50,14 @@ export default {
       timestamp: new Date().toISOString(),
     }
 
-    ctx.reply({ embeds: [embed] })
+    this.sendResponse(ctx, { embeds: [embed] }, isSlash)
+  },
+
+  sendResponse(ctx, content, isSlash) {
+    if (isSlash) {
+      return ctx.editReply(content)
+    } else {
+      return ctx.reply(content)
+    }
   },
 }

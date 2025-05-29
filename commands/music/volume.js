@@ -22,15 +22,16 @@ export default {
       }
       return message.reply({ embeds: [embed] })
     }
-    await this.setVolume(message, client, volume)
+    await this.setVolume(message, client, volume, false)
   },
 
   async executeSlash(interaction, client) {
     const volume = interaction.options.getInteger("level")
-    await this.setVolume(interaction, client, volume)
+    await interaction.deferReply()
+    await this.setVolume(interaction, client, volume, true)
   },
 
-  async setVolume(ctx, client, volume) {
+  async setVolume(ctx, client, volume, isSlash = false) {
     const player = client.music.players.get(ctx.guild.id)
 
     if (!player) {
@@ -40,7 +41,7 @@ export default {
         description: "There is no active music player!",
         timestamp: new Date().toISOString(),
       }
-      return ctx.reply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     }
 
     const voiceChannel = ctx.member.voice.channel
@@ -51,7 +52,7 @@ export default {
         description: "You need to be in the same voice channel as the bot!",
         timestamp: new Date().toISOString(),
       }
-      return ctx.reply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     }
 
     const oldVolume = player.volume
@@ -65,6 +66,14 @@ export default {
       timestamp: new Date().toISOString(),
     }
 
-    ctx.reply({ embeds: [embed] })
+    this.sendResponse(ctx, { embeds: [embed] }, isSlash)
+  },
+
+  sendResponse(ctx, content, isSlash) {
+    if (isSlash) {
+      return ctx.editReply(content)
+    } else {
+      return ctx.reply(content)
+    }
   },
 }

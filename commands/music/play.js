@@ -26,16 +26,16 @@ export default {
       })
     }
 
-    await this.playMusic(message, query, client, message.member.voice.channel)
+    await this.playMusic(message, query, client, message.member.voice.channel, false)
   },
 
   async executeSlash(interaction, client) {
     const query = interaction.options.getString("query")
     await interaction.deferReply()
-    await this.playMusic(interaction, query, client, interaction.member.voice.channel)
+    await this.playMusic(interaction, query, client, interaction.member.voice.channel, true)
   },
 
-  async playMusic(ctx, query, client, voiceChannel) {
+  async playMusic(ctx, query, client, voiceChannel, isSlash = false) {
     if (!voiceChannel) {
       const embed = {
         color: 0xff0000,
@@ -43,7 +43,7 @@ export default {
         description: "You need to be in a voice channel to play music!",
         timestamp: new Date().toISOString(),
       }
-      return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     }
 
     try {
@@ -64,7 +64,7 @@ export default {
           description: "No songs found for your query!",
           timestamp: new Date().toISOString(),
         }
-        return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
+        return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
       }
 
       if (result.type === "PLAYLIST") {
@@ -81,7 +81,7 @@ export default {
         }
 
         if (!player.playing && !player.paused) player.play()
-        return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
+        return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
       }
 
       const track = result.tracks[0]
@@ -104,7 +104,7 @@ export default {
       }
 
       if (!player.playing && !player.paused) player.play()
-      return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     } catch (error) {
       console.error("Error in play command:", error)
       const embed = {
@@ -113,7 +113,17 @@ export default {
         description: "An error occurred while trying to play the song. Make sure Lavalink is running!",
         timestamp: new Date().toISOString(),
       }
-      return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
+    }
+  },
+
+  sendResponse(ctx, content, isSlash) {
+    if (isSlash) {
+      // For slash commands, use editReply since we already deferred
+      return ctx.editReply(content)
+    } else {
+      // For regular messages, use reply
+      return ctx.reply(content)
     }
   },
 

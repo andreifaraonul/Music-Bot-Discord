@@ -41,9 +41,15 @@ class MusicBot extends Client {
           name: "main",
           url: process.env.LAVALINK_URL || "localhost:2333",
           auth: process.env.LAVALINK_PASSWORD || "youshallnotpass",
-          secure: false,
+          secure: process.env.LAVALINK_SECURE === "true" || false,
         },
       ],
+      {
+        // Additional Kazagumo options
+        reconnectTries: 5,
+        reconnectInterval: 5000,
+        restTimeout: 60000,
+      },
     )
 
     this.loadHandlers()
@@ -78,6 +84,10 @@ client.music.shoukaku.on("close", (name, code, reason) => {
 client.music.shoukaku.on("disconnect", (name, players, moved) => {
   if (moved) return
   console.warn(`⚠️ Lavalink ${name} disconnected`)
+})
+
+client.music.shoukaku.on("reconnecting", (name, reconnectsLeft, reconnectInterval) => {
+  console.log(`🔄 Lavalink ${name} reconnecting. ${reconnectsLeft} attempts left, next in ${reconnectInterval}ms`)
 })
 
 client.music.on("playerStart", (player, track) => {

@@ -7,14 +7,15 @@ export default {
   slashCommand: new SlashCommandBuilder().setName("stop").setDescription("Stop the music and clear the queue"),
 
   async execute(message, args, client) {
-    await this.stopMusic(message, client)
+    await this.stopMusic(message, client, false)
   },
 
   async executeSlash(interaction, client) {
-    await this.stopMusic(interaction, client)
+    await interaction.deferReply()
+    await this.stopMusic(interaction, client, true)
   },
 
-  async stopMusic(ctx, client) {
+  async stopMusic(ctx, client, isSlash = false) {
     const player = client.music.players.get(ctx.guild.id)
 
     if (!player) {
@@ -24,7 +25,7 @@ export default {
         description: "There is no active music player!",
         timestamp: new Date().toISOString(),
       }
-      return ctx.reply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     }
 
     const voiceChannel = ctx.member.voice.channel
@@ -35,7 +36,7 @@ export default {
         description: "You need to be in the same voice channel as the bot!",
         timestamp: new Date().toISOString(),
       }
-      return ctx.reply({ embeds: [embed] })
+      return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     }
 
     player.destroy()
@@ -48,6 +49,14 @@ export default {
       timestamp: new Date().toISOString(),
     }
 
-    ctx.reply({ embeds: [embed] })
+    this.sendResponse(ctx, { embeds: [embed] }, isSlash)
+  },
+
+  sendResponse(ctx, content, isSlash) {
+    if (isSlash) {
+      return ctx.editReply(content)
+    } else {
+      return ctx.reply(content)
+    }
   },
 }
