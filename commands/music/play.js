@@ -55,13 +55,43 @@ export default {
         deaf: true,
       })
 
-      const result = await client.music.search(query, { requester: ctx.user || ctx.author })
+      // Try multiple search strategies
+      let result = null
+      let searchAttempts = []
 
-      if (!result.tracks.length) {
+      // If it's a direct YouTube URL, try it first
+      if (query.includes("youtube.com") || query.includes("youtu.be")) {
+        searchAttempts.push({ query: query, type: "Direct URL" })
+      } else {
+        // For search queries, try multiple sources
+        searchAttempts = [
+          { query: `scsearch:${query}`, type: "SoundCloud" },
+          { query: `ytsearch:${query}`, type: "YouTube" },
+          { query: query, type: "Default" },
+        ]
+      }
+
+      for (const attempt of searchAttempts) {
+        try {
+          console.log(`Trying ${attempt.type} search: ${attempt.query}`)
+          result = await client.music.search(attempt.query, { requester: ctx.user || ctx.author })
+
+          if (result.tracks.length > 0) {
+            console.log(`✅ Found ${result.tracks.length} tracks using ${attempt.type}`)
+            break
+          }
+        } catch (searchError) {
+          console.log(`❌ ${attempt.type} search failed:`, searchError.message)
+          continue
+        }
+      }
+
+      if (!result || !result.tracks.length) {
         const embed = {
           color: 0xff0000,
           title: "❌ No Results",
-          description: "No songs found for your query!",
+          description:
+            "No songs found for your query! YouTube is currently experiencing issues. Try:\n• Different search terms\n• SoundCloud links\n• Waiting a few minutes and trying again",
           timestamp: new Date().toISOString(),
         }
         return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
@@ -76,7 +106,10 @@ export default {
           color: 0x00ff00,
           title: "📋 Playlist Added",
           description: `Added **${result.tracks.length}** songs from **${result.playlistName}**`,
-          fields: [{ name: "Requested by", value: `<@${ctx.user?.id || ctx.author.id}>`, inline: true }],
+          fields: [
+            { name: "Requested by", value: `<@${ctx.user?.id || ctx.author.id}>`, inline: true },
+            { name: "Source", value: this.getSourceEmoji(result.tracks[0]?.sourceName), inline: true },
+          ],
           timestamp: new Date().toISOString(),
         }
 
@@ -94,6 +127,7 @@ export default {
         fields: [
           { name: "Duration", value: this.formatTime(track.length), inline: true },
           { name: "Requested by", value: `<@${ctx.user?.id || ctx.author.id}>`, inline: true },
+          { name: "Source", value: this.getSourceEmoji(track.sourceName), inline: true },
         ],
         thumbnail: { url: track.thumbnail || "https://via.placeholder.com/300x300?text=Music" },
         timestamp: new Date().toISOString(),
@@ -110,19 +144,30 @@ export default {
       const embed = {
         color: 0xff0000,
         title: "❌ Error",
-        description: "An error occurred while trying to play the song. Make sure Lavalink is running!",
+        description:
+          "An error occurred while trying to play the song. YouTube is currently experiencing technical difficulties. Please try:\n• Using SoundCloud instead\n• Different search terms\n• Trying again in a few minutes",
         timestamp: new Date().toISOString(),
       }
       return this.sendResponse(ctx, { embeds: [embed] }, isSlash)
     }
   },
 
+  getSourceEmoji(sourceName) {
+    const sources = {
+      youtube: "🔴 YouTube",
+      soundcloud: "🟠 SoundCloud",
+      bandcamp: "🔵 Bandcamp",
+      twitch: "🟣 Twitch",
+      vimeo: "🔵 Vimeo",
+      http: "🌐 HTTP",
+    }
+    return sources[sourceName?.toLowerCase()] || "🎵 Unknown"
+  },
+
   sendResponse(ctx, content, isSlash) {
     if (isSlash) {
-      // For slash commands, use editReply since we already deferred
       return ctx.editReply(content)
     } else {
-      // For regular messages, use reply
       return ctx.reply(content)
     }
   },

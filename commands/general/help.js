@@ -24,6 +24,7 @@ export default {
           name: "🎵 Music Commands",
           value: [
             `\`${client.prefix}play <song>\` - Play a song or add to queue`,
+            `\`${client.prefix}search <song>\` - Search for songs from multiple sources`,
             `\`${client.prefix}skip\` - Skip the current song`,
             `\`${client.prefix}stop\` - Stop music and clear queue`,
             `\`${client.prefix}pause\` - Pause/resume the music`,
@@ -38,6 +39,20 @@ export default {
             `\`${client.prefix}help\` - Show this help message`,
             `\`${client.prefix}ping\` - Check bot latency`,
           ].join("\n"),
+          inline: false,
+        },
+        {
+          name: "🔍 Search Tips",
+          value: [
+            "🟠 For SoundCloud: `!play scsearch:song name`",
+            "🔴 For YouTube: `!play ytsearch:song name`",
+            "🔍 Multi-source search: `!search song name`",
+          ].join("\n"),
+          inline: false,
+        },
+        {
+          name: "⚠️ Current Status",
+          value: "YouTube is experiencing technical issues. SoundCloud is recommended for better reliability.",
           inline: false,
         },
         {
