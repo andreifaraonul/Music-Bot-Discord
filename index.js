@@ -1,5 +1,6 @@
 import { Client, GatewayIntentBits, Collection } from "discord.js"
 import { Kazagumo } from "kazagumo"
+import { Connectors } from "shoukaku"
 import { config } from "dotenv"
 import { fileURLToPath } from "url"
 import { dirname } from "path"
@@ -24,16 +25,17 @@ class MusicBot extends Client {
     this.slashCommands = new Collection()
     this.prefix = process.env.PREFIX || "!"
 
-    // Initialize Kazagumo (Lavalink manager)
+    // Initialize Kazagumo (Lavalink manager) with proper connector
     this.music = new Kazagumo(
       {
         defaultSearchEngine: "youtube",
+        // Use the proper connector from shoukaku
         send: (guildId, payload) => {
           const guild = this.guilds.cache.get(guildId)
           if (guild) guild.shard.send(payload)
         },
       },
-      this,
+      new Connectors.DiscordJS(this),
       [
         {
           name: "main",
@@ -61,6 +63,23 @@ class MusicBot extends Client {
 const client = new MusicBot()
 
 // Handle music events
+client.music.shoukaku.on("ready", (name) => {
+  console.log(`✅ Lavalink ${name} is ready!`)
+})
+
+client.music.shoukaku.on("error", (name, error) => {
+  console.error(`❌ Lavalink ${name} error:`, error)
+})
+
+client.music.shoukaku.on("close", (name, code, reason) => {
+  console.warn(`⚠️ Lavalink ${name} closed with code ${code} and reason ${reason || "No reason"}`)
+})
+
+client.music.shoukaku.on("disconnect", (name, players, moved) => {
+  if (moved) return
+  console.warn(`⚠️ Lavalink ${name} disconnected`)
+})
+
 client.music.on("playerStart", (player, track) => {
   const channel = client.channels.cache.get(player.textId)
   if (channel) {
@@ -70,7 +89,7 @@ client.music.on("playerStart", (player, track) => {
       description: `**[${track.title}](${track.uri})**`,
       fields: [
         { name: "Duration", value: formatTime(track.length), inline: true },
-        { name: "Requested by", value: `<@${track.requester}>`, inline: true },
+        { name: "Requested by", value: `<@${track.requester.id}>`, inline: true },
       ],
       thumbnail: { url: track.thumbnail || "https://via.placeholder.com/300x300?text=Music" },
       timestamp: new Date().toISOString(),
@@ -80,7 +99,7 @@ client.music.on("playerStart", (player, track) => {
 })
 
 client.music.on("playerEnd", (player) => {
-  if (player.queue.length === 0) {
+  if (player.queue.size === 0) {
     const channel = client.channels.cache.get(player.textId)
     if (channel) {
       const embed = {
@@ -91,6 +110,19 @@ client.music.on("playerEnd", (player) => {
       }
       channel.send({ embeds: [embed] })
     }
+  }
+})
+
+client.music.on("playerEmpty", (player) => {
+  const channel = client.channels.cache.get(player.textId)
+  if (channel) {
+    const embed = {
+      color: 0xff9900,
+      title: "🎵 Queue Empty",
+      description: "The queue is now empty. Add more songs to continue listening!",
+      timestamp: new Date().toISOString(),
+    }
+    channel.send({ embeds: [embed] })
   }
 })
 

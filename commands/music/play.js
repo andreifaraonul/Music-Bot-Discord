@@ -46,64 +46,75 @@ export default {
       return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
     }
 
-    const player = await client.music.createPlayer({
-      guildId: ctx.guild.id,
-      textId: ctx.channel.id,
-      voiceId: voiceChannel.id,
-      volume: 100,
-      deaf: true,
-    })
+    try {
+      const player = await client.music.createPlayer({
+        guildId: ctx.guild.id,
+        textId: ctx.channel.id,
+        voiceId: voiceChannel.id,
+        volume: 100,
+        deaf: true,
+      })
 
-    const result = await client.music.search(query, { requester: ctx.user || ctx.author })
+      const result = await client.music.search(query, { requester: ctx.user || ctx.author })
 
-    if (!result.tracks.length) {
-      const embed = {
-        color: 0xff0000,
-        title: "❌ No Results",
-        description: "No songs found for your query!",
-        timestamp: new Date().toISOString(),
+      if (!result.tracks.length) {
+        const embed = {
+          color: 0xff0000,
+          title: "❌ No Results",
+          description: "No songs found for your query!",
+          timestamp: new Date().toISOString(),
+        }
+        return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
       }
-      return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
-    }
 
-    if (result.type === "PLAYLIST") {
-      for (const track of result.tracks) {
-        player.queue.add(track)
+      if (result.type === "PLAYLIST") {
+        for (const track of result.tracks) {
+          player.queue.add(track)
+        }
+
+        const embed = {
+          color: 0x00ff00,
+          title: "📋 Playlist Added",
+          description: `Added **${result.tracks.length}** songs from **${result.playlistName}**`,
+          fields: [{ name: "Requested by", value: `<@${ctx.user?.id || ctx.author.id}>`, inline: true }],
+          timestamp: new Date().toISOString(),
+        }
+
+        if (!player.playing && !player.paused) player.play()
+        return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
       }
+
+      const track = result.tracks[0]
+      player.queue.add(track)
 
       const embed = {
         color: 0x00ff00,
-        title: "📋 Playlist Added",
-        description: `Added **${result.tracks.length}** songs from **${result.playlistName}**`,
-        fields: [{ name: "Requested by", value: `<@${ctx.user?.id || ctx.author.id}>`, inline: true }],
+        title: player.playing ? "📋 Added to Queue" : "🎵 Now Playing",
+        description: `**[${track.title}](${track.uri})**`,
+        fields: [
+          { name: "Duration", value: this.formatTime(track.length), inline: true },
+          { name: "Requested by", value: `<@${ctx.user?.id || ctx.author.id}>`, inline: true },
+        ],
+        thumbnail: { url: track.thumbnail || "https://via.placeholder.com/300x300?text=Music" },
         timestamp: new Date().toISOString(),
+      }
+
+      if (player.queue.size > 0) {
+        embed.fields.push({ name: "Position in queue", value: `${player.queue.size}`, inline: true })
       }
 
       if (!player.playing && !player.paused) player.play()
       return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
+    } catch (error) {
+      console.error("Error in play command:", error)
+      const embed = {
+        color: 0xff0000,
+        title: "❌ Error",
+        description: "An error occurred while trying to play the song. Make sure Lavalink is running!",
+        timestamp: new Date().toISOString(),
+      }
+      return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
     }
-
-    const track = result.tracks[0]
-    player.queue.add(track)
-
-    const embed = {
-      color: 0x00ff00,
-      title: player.playing ? "📋 Added to Queue" : "🎵 Now Playing",
-      description: `**[${track.title}](${track.uri})**`,
-      fields: [
-        { name: "Duration", value: this.formatTime(track.length), inline: true },
-        { name: "Requested by", value: `<@${ctx.user?.id || ctx.author.id}>`, inline: true },
-      ],
-      thumbnail: { url: track.thumbnail || "https://via.placeholder.com/300x300?text=Music" },
-      timestamp: new Date().toISOString(),
-    }
-
-    if (player.queue.length > 1) {
-      embed.fields.push({ name: "Position in queue", value: `${player.queue.length}`, inline: true })
-    }
-
-    if (!player.playing && !player.paused) player.play()
-    return ctx.reply ? ctx.reply({ embeds: [embed] }) : ctx.editReply({ embeds: [embed] })
   },
 
   formatTime(ms) {

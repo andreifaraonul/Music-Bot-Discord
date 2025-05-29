@@ -22,7 +22,7 @@ export default {
   async showQueue(ctx, client, page) {
     const player = client.music.players.get(ctx.guild.id)
 
-    if (!player || (!player.queue.current && player.queue.length === 0)) {
+    if (!player || (!player.queue.current && player.queue.size === 0)) {
       const embed = {
         color: 0xff0000,
         title: "❌ Empty Queue",
@@ -36,7 +36,7 @@ export default {
     const tracksPerPage = 10
     const start = (page - 1) * tracksPerPage
     const end = start + tracksPerPage
-    const totalPages = Math.ceil(queue.length / tracksPerPage)
+    const totalPages = Math.ceil(queue.size / tracksPerPage)
 
     if (page > totalPages && totalPages > 0) {
       const embed = {
@@ -54,9 +54,9 @@ export default {
       description += `**🎵 Now Playing:**\n[${queue.current.title}](${queue.current.uri}) - \`${this.formatTime(queue.current.length)}\`\n\n`
     }
 
-    if (queue.length > 0) {
-      description += `**📋 Queue (${queue.length} songs):**\n`
-      const tracks = queue.slice(start, end)
+    if (queue.size > 0) {
+      description += `**📋 Queue (${queue.size} songs):**\n`
+      const tracks = Array.from(queue).slice(start, end)
 
       tracks.forEach((track, index) => {
         const position = start + index + 1
@@ -77,8 +77,8 @@ export default {
           name: "⏱️ Total Duration",
           value: this.formatTime(
             queue.current
-              ? queue.current.length + queue.reduce((acc, track) => acc + track.length, 0)
-              : queue.reduce((acc, track) => acc + track.length, 0),
+              ? queue.current.length + Array.from(queue).reduce((acc, track) => acc + track.length, 0)
+              : Array.from(queue).reduce((acc, track) => acc + track.length, 0),
           ),
           inline: true,
         },
